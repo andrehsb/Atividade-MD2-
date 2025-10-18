@@ -18,9 +18,11 @@ ll gcd(ll a, ll b) {
     return a;
 }
 
-// Algoritmo estendido de Euclides: retorna gcd(a,b) e preenche x,y tal que a*x + b*y = gcd
+// Algoritmo estendido de Euclides
 ll extended_euclid(ll a, ll b, ll *x, ll *y) {
-    if (a == 0) { *x = 0; *y = 1; return b; }
+    if (a == 0) { 
+        *x = 0; *y = 1; return b; 
+    }
     ll x1 = 1, y1 = 0, x2 = 0, y2 = 1;
     ll r1 = a, r2 = b;
     while (r2 != 0) {
@@ -37,11 +39,27 @@ int isPrime(ll n) {
     if (n <= 1) return 0;
     if (n <= 3) return 1;
     if (n % 2 == 0) return 0;
-    for (ll i = 3; i * i <= n; i += 2) if (n % i == 0) return 0;
+    for (ll i = 3; i * i <= n; i += 2)
+        if (n % i == 0) return 0;
     return 1;
 }
 
-// --- Pollard Rho com c iterativo e reinicializacao ---
+// --- NOVA FUNÇÃO: Verifica se é possível aplicar o Teorema de Fermat ---
+int podeAplicarFermat(ll M, ll n) {
+    if (!isPrime(n)) {
+        printf("    Nao é possível aplicar Fermat: n = %lld nao é primo.\n", n);
+        return 0;
+    }
+    ll g = gcd(M, n);
+    if (g != 1) {
+        printf("    Nao é possível aplicar Fermat: mdc(M, n) = %lld ≠ 1.\n", g);
+        return 0;
+    }
+    printf("    É possível aplicar o Pequeno Teorema de Fermat.\n");
+    return 1;
+}
+
+// --- Pollard Rho ---
 ll f_with_c(ll x, ll c, ll N) {
     __int128 t = (__int128)x * x + c;
     return (ll)(t % N);
@@ -74,7 +92,7 @@ ll pollard_rho_factorization(ll N) {
             printf("Fator nao trivial de %lld encontrado: %lld\n", N, p);
             return p;
         }
-        c++; // aumenta c e tenta novamente
+        c++;
         if (c > 1000) {
             fprintf(stderr, "Pollard falhou (muitos c). Saindo.\n");
             exit(EXIT_FAILURE);
@@ -84,9 +102,9 @@ ll pollard_rho_factorization(ll N) {
 
 // --- CODIFICACAO / DECODIFICACAO ---
 ll char_to_code(char c) {
-    if (c == ' ') return 0; // 00
-    if (isalpha((unsigned char)c)) return (toupper((unsigned char)c) - 'A' + 11); // 11..36
-    return -1; // ignorar outros simbolos
+    if (c == ' ') return 0;
+    if (isalpha((unsigned char)c)) return (toupper((unsigned char)c) - 'A' + 11);
+    return -1;
 }
 
 char code_to_char(ll code) {
@@ -95,7 +113,7 @@ char code_to_char(ll code) {
     return '?';
 }
 
-// exponenciacao modular com prints passo-a-passo
+// exponenciacao modular
 ll modular_pow(ll base, ll exp, ll mod) {
     ll res = 1;
     base %= mod;
@@ -134,102 +152,76 @@ int main() {
         if (N2 == N1) printf("Erro: N2 deve ser diferente de N1.\n");
     }
 
-    // Fatoracao
-    // fatoracao de N1 e N2 (obtém apenas um fator não-trivial de cada)
     ll f1 = pollard_rho_factorization(N1);
     ll other1 = N1 / f1;
-    if (f1 > other1) { ll tmp = f1; f1 = other1; other1 = tmp; } // opcional: ordena
+    if (f1 > other1) { ll tmp = f1; f1 = other1; other1 = tmp; }
 
     ll f2 = pollard_rho_factorization(N2);
     ll other2 = N2 / f2;
-    if (f2 > other2) { ll tmp = f2; f2 = other2; other2 = tmp; } // opcional: ordena
+    if (f2 > other2) { ll tmp = f2; f2 = other2; other2 = tmp; }
 
-    // Escolha de p e q distintos (política simples e segura)
-    ll p = f1;    // pega um primo de N1
-    ll q;
-    if (f1 != f2) {
-        q = f2;   // se fatores distintos, ok
-    } else {
-        // se f1 == f2 (primo em comum), escolhe o outro fator de N2
-        q = other2;
-    }
+    ll p = f1;
+    ll q = (f1 != f2) ? f2 : other2;
 
-    // Verificacao final: p e q devem ser primos e distintos
     if (p == q) {
-        fprintf(stderr, "Erro: nao foi possivel obter primos distintos a partir de N1 e N2. Tente outros valores.\n");
+        fprintf(stderr, "Erro: nao foi possivel obter primos distintos.\n");
         exit(EXIT_FAILURE);
     }
     if (!isPrime(p) || !isPrime(q)) {
-        fprintf(stderr, "Erro: um dos fatores escolhidos nao e primo (problema na fatoracao). Abortando.\n");
+        fprintf(stderr, "Erro: um dos fatores nao e primo.\n");
         exit(EXIT_FAILURE);
     }
 
     printf("\nPrimos encontrados: p = %lld, q = %lld\n\n", p, q);
 
-    // Geracao de chaves
     ll n = p * q;
     ll z = (p - 1) * (q - 1);
-    printf("n = p * q = %lld\n", n);
-    printf("phi(n) = (p-1)*(q-1) = %lld\n", z);
+    printf("n = %lld\nphi(n) = %lld\n", n, z);
 
-    // Escolhe o menor e > 1 tal que gcd(e, z) == 1 e e < n (seguindo enunciado)
     ll e;
-    for (e = 2; e < n; e++) {
+    for (e = 2; e < n; e++)
         if (gcd(e, z) == 1) break;
-    }
-    if (e >= n) { fprintf(stderr, "Nao foi possivel encontrar e adequado.\n"); return 1; }
-    printf("Escolhido e = %lld\n", e);
 
-    // Calcula d (inverso modular de e mod z)
     ll x, y;
-    ll g = extended_euclid(e, z, &x, &y);
-    if (g != 1) { fprintf(stderr, "e e z nao sao coprimos (erro)\n"); return 1; }
+    extended_euclid(e, z, &x, &y);
     ll d = (x % z + z) % z;
-    printf("Calculado d (inverso modular): d = %lld\n", d);
 
     printf("Chave Publica: (n, e) = (%lld, %lld)\n", n, e);
     printf("Chave Privada: (n, d) = (%lld, %lld)\n", n, d);
 
-    // Limpa buffer e le mensagem
     int ch; while ((ch = getchar()) != '\n' && ch != EOF);
     char message[512];
-    printf("\nDigite a mensagem a ser criptografada (A-Z e espaco, outros ignorados):\n");
-    if (!fgets(message, sizeof(message), stdin)) { fprintf(stderr, "Erro ao ler mensagem\n"); return 1; }
+    printf("\nDigite a mensagem a ser criptografada:\n");
+    fgets(message, sizeof(message), stdin);
     message[strcspn(message, "\n")] = 0;
 
-    // Codificacao
     ll encrypted_blocks[512];
     int valid = 0;
     int len = (int)strlen(message);
     printf("\n--- INICIANDO CRIPTOGRAFIA ---\n");
+
     for (int i = 0; i < len; i++) {
         ll M = char_to_code(message[i]);
-        if (M == -1) {
-            printf("Ignorando caractere '%c'\n", message[i]);
-            continue;
-        }
-        printf("\nCriptografando caractere '%c' -> M = %02lld\n", message[i], M);
+        if (M == -1) continue;
 
-        // Escolha de reducao do expoente conforme enunciado
+        printf("\nCriptografando '%c' -> M = %02lld\n", message[i], M);
         ll reduced_e = e;
-        if (isPrime(n)) {
-            printf("   Aplicando Pequeno Teorema de Fermat (n primo): reduzir e mod (n-1)\n");
+
+        // Usa a nova função para checar Fermat
+        if (podeAplicarFermat(M, n)) {
             reduced_e = e % (n - 1);
         } else if (gcd(M, n) == 1) {
-            printf("   Aplicando Teorema de Euler (mdc(M,n)=1): reduzir e mod phi(n)\n");
-            if (z > 0) reduced_e = e % z;
+            printf("   Aplicando Teorema de Euler: reduzir e mod phi(n)\n");
+            reduced_e = e % z;
         } else {
-            printf("   Aplicando regra da Divisao Euclidiana (mdc(M,n) != 1): nao reduzindo expoente\n");
-            reduced_e = e;
+            printf("   Aplicando Divisao Euclidiana: nao reduz expoente\n");
         }
-        if (reduced_e != e) printf("   e reduzido de %lld para %lld\n", e, reduced_e);
 
         ll C = modular_pow(M, reduced_e, n);
         encrypted_blocks[valid++] = C;
         printf("   Bloco cifrado C = %lld\n", C);
     }
 
-    // Descriptografia
     printf("\n--- INICIANDO DESCRIPTOGRAFIA ---\n");
     char decrypted[512];
     int di = 0;
@@ -237,22 +229,20 @@ int main() {
         ll C = encrypted_blocks[i];
         printf("\nDescriptografando C = %lld\n", C);
         ll reduced_d = d;
-        if (isPrime(n)) {
-            printf("   Aplicando Pequeno Teorema de Fermat (n primo): reduzir d mod (n-1)\n");
+
+        if (podeAplicarFermat(C, n)) {
             reduced_d = d % (n - 1);
         } else if (gcd(C, n) == 1) {
-            printf("   Aplicando Teorema de Euler (mdc(C,n)=1): reduzir d mod phi(n)\n");
-            if (z > 0) reduced_d = d % z;
+            printf("   Aplicando Teorema de Euler: reduzir d mod phi(n)\n");
+            reduced_d = d % z;
         } else {
-            printf("   Aplicando regra da Divisao Euclidiana (mdc(C,n) != 1): nao reduzindo expoente\n");
-            reduced_d = d;
+            printf("   Aplicando Divisao Euclidiana: nao reduz expoente\n");
         }
-        if (reduced_d != d) printf("   d reduzido de %lld para %lld\n", d, reduced_d);
 
         ll M = modular_pow(C, reduced_d, n);
         char cc = code_to_char(M);
         decrypted[di++] = cc;
-        printf("   Bloco M decifrado = %02lld -> '%c'\n", M, cc);
+        printf("   Bloco decifrado = %02lld -> '%c'\n", M, cc);
     }
     decrypted[di] = '\0';
 
